@@ -28,9 +28,9 @@ jobs:
       - name: Creación carpeta en máquina remota
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.IP_PUBLICA_AMI }}
-          username: ${{ secrets.USER_AMI }}
-          key: ${{ secrets.SSH_KEY }}
+          host: ${{ secrets.IP_SERVER }}
+          username: ${{ secrets.USERNAME}}
+          key: ${{ secrets.PRIVATE_KEY }}
           port: ${{ secrets.PORT }}
           script: |
             mkdir -p /home/ec2-user/test/
@@ -39,7 +39,7 @@ jobs:
       - name: Agrega SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.PRIVATE_KEY }}" > ~/.ssh/id_rsa
           echo 600 ~/.ssh/id_rsa
 
       - name: Deploy files to server with rsync
@@ -47,18 +47,18 @@ jobs:
         with:
           switches: "-avz --delete" # Opciones de rsync
           path: "./" # Directorio de origen
-          remote_host: ${{ secrets.IP_PUBLICA_AMI }}
-          remote_user: ${{ secrets.USER_AMI }} # Usuario SSH
+          remote_host: ${{ secrets.IP_SERVER }}
+          remote_user: ${{ secrets.USERNAME }} # Usuario SSH
           remote_path: /home/ec2-user/test
-          remote_key: ${{ secrets.SSH_KEY }}
+          remote_key: ${{ secrets.PRIVATE_KEY }}
           remote_port: ${{ secrets.PORT }}
 
       - name: Instalar dependencias en servidor remoto
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.IP_PUBLICA_AMI }} # IP pública EC2
-          username: ${{ secrets.USER_AMI }} # Usuario SSH
-          key: ${{ secrets.SSH_KEY }}
+          host: ${{ secrets.IP_SERVER }} # IP pública EC2
+          username: ${{ secrets.USERNAME }} # Usuario SSH
+          key: ${{ secrets.PRIVATE_KEY }}
           port: ${{ secrets.PORT }}
           script: |
             sudo yum update -y 
