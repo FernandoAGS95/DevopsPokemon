@@ -1,0 +1,73 @@
+name: django-web
+on:
+    push:
+      branches:
+        - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout sources
+        uses: myci-actions/checkout@8
+
+      - name: Configurar Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.13
+
+      - name: instalar dependencias
+        run: |
+            cd ejercicioTrackDevops1
+            pip install -r requirements.txt
+            
+      - name: Ejecutar pruebas
+        run: |
+            cd ejercicioTrackDevops1
+            python manage.py test
+
+      - name: Creación carpeta en máquina remota
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.IP_PUBLICA_AMI }}
+          username: ${{ secrets.USER_AMI }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            mkdir -p /home/ec2-user/test/
+            ls -la
+
+      - name: Agrega SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          echo 600 ~/.ssh/id_rsa
+
+      - name: Deploy files to server with rsync
+        uses: burnett01/rsync-deployments@7.0.2
+        with:
+          switches: "-avz --delete" # Opciones de rsync
+          path: "./" # Directorio de origen
+          remote_host: ${{ secrets.IP_PUBLICA_AMI }}
+          remote_user: ${{ secrets.USER_AMI }} # Usuario SSH
+          remote_path: /home/ec2-user/test
+          remote_key: ${{ secrets.SSH_KEY }}
+          remote_port: ${{ secrets.PORT }}
+
+      - name: Instalar dependencias en servidor remoto
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.IP_PUBLICA_AMI }} # IP pública EC2
+          username: ${{ secrets.USER_AMI }} # Usuario SSH
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            sudo yum update -y 
+            curl -O https://bootstrap.pypa.io/get-pip.py
+            python3 get-pip.py --user
+            pwd
+            cd /home/ec2-user/test/ejercicioTrackDevops1/
+            python3 -m venv venv
+            source venv/bin/activate
+            pip3 install -r requirements.txt
+            nohup python3 manage.py runserver 0.0.0.0:8000 --noreload > /dev/null 2>&1 &
+            exit 0
